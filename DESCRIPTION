@@ -1,0 +1,36 @@
+Package: ISPAT3D
+Type: Package
+Title: Spatial Network Estimation in 3D Multiplexed Cancer Imaging
+Version: 0.1.0
+Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu", role = c("aut", "cre"))
+Description: ISPat-3D extends spatially varying conditional network
+    estimation to volumetric (3D) or serial-section multiplexed tissue
+    imaging. Gaussian process hyperparameters are estimated per marker per
+    tumor-density zone via type-II marginal likelihood optimization; the
+    resulting de-spatialised residuals are passed to a multi-study factor
+    analysis to recover a shared cell-type interaction network and
+    zone-specific interaction networks per spot/field of view.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    doParallel,
+    foreach,
+    Matrix,
+    matrixcalc,
+    parallel,
+    sparsepca,
+    mnormt,
+    MASS,
+    stats,
+    grDevices
+Suggests:
+    bigmemory,
+    dplyr,
+    igraph,
+    tidygraph,
+    ggraph,
+    ggplot2,
+    scales,
+    data.table
+RoxygenNote: 7.3.1
