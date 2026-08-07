@@ -27,8 +27,9 @@ temporary bigmemory backing file; defaults to \code{tempdir()}. The backing
 file is removed when the function finishes.}
 }
 \value{
-A list with elements \code{Shared_Net} (G x G shared network),
-\code{Zone_Nets} (named list of G x G zone-specific networks), \code{Z_est}
+A list with elements \code{Shared_Net} (G x G shared factor covariance
+component), \code{Zone_Nets} (named list of G x G full zone-specific
+covariance matrices), \code{Z_est}
 (de-spatialised residuals per zone), and \code{VBfit} (raw MSFA fit).
 }
 \description{

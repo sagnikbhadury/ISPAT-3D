@@ -27,9 +27,10 @@ library(ISPAT3D)
 
 result <- ISPAT_3D(Y, S, spots_vec, ncores = 8, Kernel = "Matern", MSFA_method = "CAVI")
 
-# Shared network for one spot, as a partial correlation matrix
-pcor <- cov_to_pcor(result[["spot_1"]]$Shared_Net, cell_types = rownames(Y))
-plot_pcor_chord(pcor, title = "Shared network", threshold = 0.05)
+# Full covariance for one zone, as a partial correlation matrix
+zone_cov <- result[["spot_1"]]$Zone_Nets[[1]]
+pcor <- cov_to_pcor(zone_cov, cell_types = rownames(Y))
+plot_pcor_chord(pcor, title = "Zone-specific network", threshold = 0.05)
 ```
 
 For very large spots (many cells and/or many markers), `run_ispat_spot_bigmem()`

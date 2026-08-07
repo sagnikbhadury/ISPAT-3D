@@ -15,8 +15,9 @@
 #' @param MSFA_method Multi-study factor analysis algorithm: \code{"CAVI"} or
 #'   \code{"SVI"}.
 #'
-#' @return A list with elements \code{Shared_Net} (G x G shared network),
-#'   \code{Zone_Nets} (named list of G x G zone-specific networks),
+#' @return A list with elements \code{Shared_Net} (G x G shared factor
+#'   covariance component), \code{Zone_Nets} (named list of G x G full
+#'   zone-specific covariance matrices),
 #'   \code{Z_est} (de-spatialised residuals per zone), and \code{VBfit} (raw
 #'   MSFA fit).
 #'
@@ -70,7 +71,9 @@ run_ispat_spot <- function(Y_sp, S_sp, ncores,
 
   Shared_Net <- tcrossprod(VBfit$mean_phi)
   Zone_Nets <- lapply(1:C, function(c) {
-    tcrossprod(VBfit$mean_lambda_s[[c]]) + tcrossprod(VBfit$mean_phi)
+    tcrossprod(VBfit$mean_phi) +
+      tcrossprod(VBfit$mean_lambda_s[[c]]) +
+      diag(as.numeric(VBfit$mean_psi_s[[c]]))
   })
   names(Zone_Nets) <- zone_names[1:C]
 

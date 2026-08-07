@@ -1,7 +1,7 @@
 Package: ISPAT3D
 Type: Package
 Title: Spatial Network Estimation in 3D Multiplexed Cancer Imaging
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu", role = c("aut", "cre"))
 Description: ISPat-3D extends spatially varying conditional network
     estimation to volumetric (3D) or serial-section multiplexed tissue

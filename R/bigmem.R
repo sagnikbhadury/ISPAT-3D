@@ -169,7 +169,9 @@ run_ispat_spot_bigmem <- function(Y_sp, S_sp, ncores,
 
   Shared_Net <- tcrossprod(VBfit$mean_phi)
   Zone_Nets <- lapply(1:C, function(c) {
-    tcrossprod(VBfit$mean_lambda_s[[c]]) + tcrossprod(VBfit$mean_phi)
+    tcrossprod(VBfit$mean_phi) +
+      tcrossprod(VBfit$mean_lambda_s[[c]]) +
+      diag(as.numeric(VBfit$mean_psi_s[[c]]))
   })
   names(Zone_Nets) <- zone_names[1:C]
 

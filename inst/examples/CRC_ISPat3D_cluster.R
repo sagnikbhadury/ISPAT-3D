@@ -217,7 +217,7 @@ for (c in seq_along(Z_est)) {
 #
 # Networks:
 #   Shared_Net  = Phi Phi^T                        (G x G)
-#   Zone_Net_c  = Phi Phi^T + Lambda_c Lambda_c^T  (G x G)
+#   Zone_Net_c  = Phi Phi^T + Lambda_c Lambda_c^T + Psi_c  (G x G)
 # =============================================================================
 
 message("\n=== STEP 3: MSFA and network extraction ===\n")
@@ -232,7 +232,9 @@ Shared_Net <- tcrossprod(VBfit$mean_phi)
 rownames(Shared_Net) <- colnames(Shared_Net) <- CELL_TYPES
 
 Zone_Nets <- lapply(seq_along(Z_est), function(c) {
-  net <- tcrossprod(VBfit$mean_lambda_s[[c]]) + tcrossprod(VBfit$mean_phi)
+  net <- tcrossprod(VBfit$mean_phi) +
+    tcrossprod(VBfit$mean_lambda_s[[c]]) +
+    diag(as.numeric(VBfit$mean_psi_s[[c]]))
   rownames(net) <- colnames(net) <- CELL_TYPES
   net
 })
