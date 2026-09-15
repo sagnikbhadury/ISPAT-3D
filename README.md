@@ -1,56 +1,23 @@
-# ISPAT3D: Spatial Network Estimation in 3D Multiplexed Cancer Imaging
+# ISPAT3D
 
-An R package extending [ISPAT](https://github.com/sagnikbhadury/ISPAT) to
-volumetric (3D) or serial-section multiplexed tissue imaging. Gaussian
-process hyperparameters are estimated per marker per tumor-density zone via
-type-II marginal likelihood optimization (L-BFGS-B); the resulting
-de-spatialised residuals are passed to a multi-study factor analysis to
-recover a shared cell-type interaction network and zone-specific interaction
-networks for each spot/field of view.
+ISPAT3D estimates conditional associations among cell-type density variables in registered three-dimensional tumor images. The R package retains the original exact Gaussian-process and CAVI workflow for smaller inputs. The revision workflow in [inst/reanalysis/round2](inst/reanalysis/round2/README.md) uses a Matérn Gaussian process with a 15-neighbor Vecchia likelihood on spatially balanced anchors, then fits the same shared-plus-zone factor covariance form from the full adjusted covariance summaries. It was developed for the larger colorectal and breast imaging applications.
 
-## Installation
+The original [ISPAT](https://github.com/sagnikbhadury/ISPAT) package provides the methodological reference for planar analysis. The revision scripts include a matched section-wise planar implementation with the same selected cells and downstream factor covariance fit, allowing a practical 2D comparison at these data sizes.
+
+Install the R package with:
 
 ```r
-# install.packages("remotes")
 remotes::install_github("sagnikbhadury/ISPAT-3D")
 ```
 
-`run_ispat_spot_bigmem()` additionally requires the `bigmemory` package, and
-`plot_pcor_chord()` requires `dplyr`, `igraph`, `tidygraph`, `ggraph`,
-`ggplot2`, and `scales`; none of these are installed automatically, since
-they are only needed for those specific optional functions.
-
-## Usage
+For a small input, the legacy API remains:
 
 ```r
 library(ISPAT3D)
-
-result <- ISPAT_3D(Y, S, spots_vec, ncores = 8, Kernel = "Matern", MSFA_method = "CAVI")
-
-# Full covariance for one zone, as a partial correlation matrix
+result <- ISPAT_3D(Y, S, spots_vec, ncores = 8,
+                   Kernel = "Matern", MSFA_method = "CAVI")
 zone_cov <- result[["spot_1"]]$Zone_Nets[[1]]
 pcor <- cov_to_pcor(zone_cov, cell_types = rownames(Y))
-plot_pcor_chord(pcor, title = "Zone-specific network", threshold = 0.05)
 ```
 
-For very large spots (many cells and/or many markers), `run_ispat_spot_bigmem()`
-is a memory-efficient drop-in replacement for `run_ispat_spot()` that avoids
-serializing the full expression matrix to every parallel worker.
-
-## Package layout
-
-* `R/ISPAT3D.R` — `ISPAT_3D()` (loops over spots) and `run_ispat_spot()`
-  (single spot).
-* `R/bigmem.R` — `run_ispat_spot_bigmem()`, a memory-mapped variant for large
-  spots.
-* `R/kernel-utils.R` — internal GP kernel and per-marker fitting helpers.
-* `R/msfa.R` — the multi-study factor analysis step, `cavi_msfa()` and
-  `svi_msfa()` (shared with the ISPAT package).
-* `R/network-utils.R` — `cov_to_pcor()` and `plot_pcor_chord()`, utilities
-  for turning a network into a partial correlation matrix and chord diagram.
-* `inst/examples/` — two case-study analysis scripts (breast cancer IMC data
-  from Kuett et al. 2022, and CRC imaging data from Lin et al. 2023) that use
-  this package end to end. These are example pipelines, not part of the
-  package's public API, and expect their own local input data.
-
-See `?ISPAT_3D` for full documentation of the main function.
+The revision workflow is script-based because its full-data covariance likelihood is implemented in Python. Its CLI inputs, analysis order, and output provenance are documented in the linked reanalysis directory. Input imaging tables and submitted manuscript files are not included in this software archive. The colorectal and breast source datasets are described in the manuscript and their original releases.

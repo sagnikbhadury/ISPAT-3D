@@ -1,0 +1,12 @@
+﻿cff-version: 1.2.0
+message: "If you use the ISPAT3D software, please cite this archived release."
+title: "ISPAT3D spatial conditional association analysis for volumetric tumor imaging"
+type: software
+authors:
+  - family-names: Bhadury
+    given-names: Sagnik
+    email: bhadury@umich.edu
+repository-code: https://github.com/sagnikbhadury/ISPAT-3D
+version: 0.2.0
+date-released: 2026-09-15
+license: MIT
