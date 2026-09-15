@@ -13,7 +13,8 @@ def run(dataset,root_arg):
  boot=pd.read_csv(root/"section_block_resampling.csv")
  edge=pd.read_csv(root/"edge_effects_and_tier_stability.csv")
  mats=[pd.read_csv(root/f"pcor_combined_{z.replace(' ','_')}.csv",index_col=0) for z in ZONES]
- labels=mats[0].index.tolist()
+ labels=[x for x in mats[0].index if not (dataset=="bc" and x=="Tumor_luminal")]
+ mats=[m.loc[labels,labels] for m in mats]
  pairs=[(i,j) for i in range(len(labels)) for j in range(i+1,len(labels))]
  effects=np.array([[m.iloc[i,j] for m in mats] for i,j in pairs])
  names=[f"{LABELS.get(labels[i],labels[i])} : {LABELS.get(labels[j],labels[j])}" for i,j in pairs]

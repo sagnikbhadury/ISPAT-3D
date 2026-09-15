@@ -1,7 +1,7 @@
 Package: ISPAT3D
 Type: Package
 Title: Spatial Network Estimation in 3D Multiplexed Cancer Imaging
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu", role = c("aut", "cre"))
 Description: Estimates conditional cell-density associations in registered
     volumetric multiplex imaging. The legacy API retains exact type-II

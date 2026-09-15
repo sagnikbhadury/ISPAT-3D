@@ -32,6 +32,8 @@ python plot_2d_deltas.py --root <analysis_root> --dataset bc --budget 45000
 Rscript precision_sensitivity.R <analysis_root>
 ```
 
+The breast luminal tumor KDE is structurally zero; breast effect heatmaps and 3D-versus-2D pair tables report the 55 pairs among the 11 active variables. The complete covariance outputs retain the zero variable for label provenance. Active-pair breast three-budget sign agreement is 187/275 (68.0%), and at least 90% section-block sign agreement is 171/275 (62.2%).
+
 The `run_saved_simulations.R`, `summarize_simulations.py`, `measure_simulation_runtime.py`, `focused_gp_vecchia_validation.R`, and `plot_focused_gp_validation.py` scripts remake Figures 3–6 from the saved generated simulation inputs or the focused synthetic design. `make_overview_figures.py` remakes Figures 1–2. `make_section_stats.R`, `block_bootstrap_precision.py`, and `plot_fullpair_with_block.py` produce the section-block stability tables and full-pair zone heatmaps. The section-block resampling uses fixed GP residuals; it does not re-estimate the GP or account for image-registration uncertainty.
 
 The precision comparison applies the first-round EBIC graphical-lasso protocol to the new large-fit residuals. A low-rank shared loading product has no unregularized precision matrix, so biological interpretation and 2D deltas use full zone covariances.

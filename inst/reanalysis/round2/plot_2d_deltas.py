@@ -20,8 +20,8 @@ def run(dataset,budget,root_arg):
   b=pd.read_csv(base/"factor_fit"/f"pcor_{tag}.csv",index_col=0).loc[a.index,a.columns]
   d=a-b
   d.to_csv(out/f"pcor_3d_minus_sectionwise_2d_{tag}.csv")
-  mats.append(d.to_numpy())
-  labels=a.index.tolist()
+  labels=[x for x in a.index if not (dataset=="bc" and x=="Tumor_luminal")]
+  mats.append(d.loc[labels,labels].to_numpy())
  g=len(labels)
  pairs=[(i,j) for i in range(g) for j in range(i+1,g)]
  effect=np.array([[m[i,j] for m in mats] for i,j in pairs])

@@ -54,8 +54,12 @@ def run(dataset,budget,reps,root_arg):
      "bootstrap_sd":float(np.std(vals,ddof=1))})
  out=root/"combined"/"section_block_resampling.csv"
  pd.DataFrame(rows).to_csv(out,index=False)
+ active_rows=pd.DataFrame(rows)
+ if dataset=="bc":
+  active_rows=active_rows[(active_rows.cell_1!="Tumor_luminal")&(active_rows.cell_2!="Tumor_luminal")]
  summary={"dataset":dataset,"budget":budget,"n_sections":len(sections),"n_replicates":reps,
-  "same_sign_fraction_ge_0_9":float(np.mean(pd.DataFrame(rows).same_sign_fraction>=.9)),
+  "n_active_pair_zone_entries":len(active_rows),
+  "same_sign_fraction_ge_0_9":float(np.mean(active_rows.same_sign_fraction>=.9)),
   "scope":"Reweights serial sections of fixed GP residuals; does not refit the GP or quantify registration and model-selection uncertainty"}
  (root/"combined"/"section_block_resampling_summary.json").write_text(json.dumps(summary,indent=2))
  print(summary,flush=True)
