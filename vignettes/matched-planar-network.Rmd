@@ -1,0 +1,145 @@
+---
+title: "Matched section-wise 2D networks and a 3D comparison"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Matched section-wise 2D networks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This vignette uses a small registered synthetic cell map to run the **matched section-wise planar comparator**. The 2D model fits a Matérn-3/2 GP independently within each zone and section using $(x,y)$ coordinates; its adjusted rows are then passed to the same Gaussian-likelihood shared-plus-zone covariance fitter as the 3D model. The matched comparison keeps the **selected cell roster** and downstream estimator fixed. It changes both coordinate dimension and the way sections are pooled, so a 3D-minus-2D difference does not isolate a causal effect of depth.
+
+The planar workflow follows the cell-density, spatial-adjustment, factor-covariance, and conditional-network architecture of the published ISPat method (Bhadury *et al.*, 2026). Its scalable Vecchia and Gaussian-likelihood estimators are those used for the ISPAT-3D comparison described by Bhadury and Rao (2026); it is not an execution of the original Bayesian ISPat package.
+
+## 1. Prepare a small serial-section image
+
+```{r setup, message=FALSE}
+library(ISPAT3D)
+image <- ispat3d_example_image(n_per_section = 30, n_sections = 3,
+                               bandwidth = 0.12, seed = 2026)
+table(image$zones, image$sections)
+```
+
+The example has three registered sections, three annotated source cell types, a cell-type-specific KDE at every cell, and Low/High zones defined by each section's tumor-cell KDE median. The model matrix `image$Y` is `log1p(1e9 * image$kde)`. This miniature image is for execution and teaching. Real images need checked cell classification, registration, section IDs, KDE surfaces, and a prespecified tumor-burden score before fitting.
+
+The section-zone group sizes matter because the planar GP is fitted **inside each group**. A group with fewer than ten cells is mean-centered. With the selection below, each group has 12 cells and exercises the actual GP code.
+
+```{r sections, fig.width=7, fig.height=2.8, fig.cap="Synthetic planar cell locations, colored by relative tumor-density zone."}
+old <- par(mfrow = c(1, 3), mar = c(3, 3, 2, 1))
+zone_color <- c(Low = "#4C72B0", High = "#C44E52")
+for (s in sort(unique(image$sections))) {
+  at <- image$sections == s
+  plot(image$coords[at, 1:2], xlim = c(0, 1), ylim = c(0, 1),
+       xlab = "x", ylab = "y", main = paste("Section", s), pch = 19,
+       cex = 0.6, col = zone_color[as.character(image$zones[at])])
+}
+par(old)
+```
+
+## 2. Fix the cell roster before either fit
+
+Call `ispat3d_sample()` once and pass its row indices to both analyses. This is the key matching rule; selecting separate random subsets would conflate sampling with the spatial-model comparison.
+
+```{r roster}
+selected <- ispat3d_sample(image$coords, image$zones, image$sections,
+                           budget = 36L, budget_kind = "per_zone",
+                           seed = 2027L)
+rows <- unlist(selected, use.names = FALSE)
+table(image$zones[rows], image$sections[rows])
+stopifnot(length(rows) == 72L)
+Y <- image$Y[rows, , drop = FALSE]
+xyz <- image$coords[rows, , drop = FALSE]
+zone <- image$zones[rows]
+section <- image$sections[rows]
+```
+
+For experimental CRC-style analysis, the budget denotes cells **per zone**. For the manuscript's breast specimen, `budget_kind = "total"` allocates one budget across the five zones. Save `selected` with `saveRDS()` when comparing fit variants or repeating an analysis.
+
+## 3. Fit the section-wise planar model
+
+`ispat3d_fit_2d()` takes the same three-column registered coordinate matrix as the 3D function but uses only the first two columns for each section-zone GP. GP predictions and residuals are made for all selected cells in that group. The complete adjusted covariance for each zone then enters the same factor-covariance likelihood as the volumetric fit.
+
+This example uses a small rank and short optimizer budget for a fast executable vignette. Defaults for large applications are 15 Vecchia neighbors and up to 5,000 anchors per fit; the manuscript used rank five for CRC and breast.
+
+```{r fit2d}
+common <- list(
+  Y = Y, coords = xyz, zones = zone, sections = section,
+  rank = 2L, anchor_min = 12L, anchor_max = 24L,
+  neighbors = 5L, gp_maxit = 3L, factor_maxit = 60L,
+  threads = 1L, return_residuals = TRUE
+)
+fit2d <- do.call(ispat3d_fit_2d, common)
+table(fit2d$gp_log$status)
+fit2d$counts
+```
+
+Inspect `fit2d$gp_log` before using the result. A `small_section` or `constant` status means mean-centering was used as specified; `fallback:...` means an attempted GP failed and that particular variable-group was mean-centered. The returned residual matrices are available because `return_residuals = TRUE` was set.
+
+## 4. Compute and plot conditional networks
+
+The fitted covariance in zone $q$ is the sum of shared factors, zone factors, and positive diagonal uniqueness. The partial correlation for a pair is obtained by inverting this **full** covariance and normalizing its precision entries. The shared factor product alone is low rank and should not be inverted as a separate network.
+
+```{r network-values}
+round(fit2d$full[["High"]], 3)
+round(fit2d$partial[["High"]], 3)
+stopifnot(isTRUE(all.equal(
+  ispat3d_partial_correlation(fit2d$full[["High"]]),
+  fit2d$partial[["High"]]
+)))
+ispat3d_edge_table(fit2d, zone = "High", threshold = 0.02)
+```
+
+```{r planar-networks, fig.width=7, fig.height=3.5, fig.cap="Matched planar conditional-density networks in the two simulated zones."}
+ispat3d_plot_zones(fit2d, columns = 2, threshold = 0.02,
+                   label_cex = 0.8)
+```
+
+The edge table and base-R circular plots use the fitted partial correlations. Red and blue edges are positive and negative conditional density associations. A display threshold declutters the drawing; it is not a test of significance.
+
+## 5. Compare with the volumetric fit on identical cells
+
+```{r fit3d}
+fit3d <- do.call(ispat3d_fit, common)
+stopifnot(identical(fit3d$counts, fit2d$counts))
+delta_high <- fit3d$partial[["High"]] - fit2d$partial[["High"]]
+round(delta_high, 3)
+```
+
+```{r comparison, fig.width=7, fig.height=3.5, fig.cap="The same selected cells analyzed with pooled 3D and section-wise planar GP adjustment."}
+old <- par(mfrow = c(1, 2), mar = c(1, 1, 3, 1))
+ispat3d_plot_network(fit3d, zone = "High", threshold = 0.02,
+                     main = "Pooled 3D", label_cex = 0.8)
+ispat3d_plot_network(fit2d, zone = "High", threshold = 0.02,
+                     main = "Section-wise 2D", label_cex = 0.8)
+par(old)
+```
+
+A 3D-minus-2D contrast is a difference between two complete spatial-adjustment strategies. It should be reported with effect magnitudes, GP fit diagnostics, sampling details, and the caution that a smooth field can contain meaningful tissue biology. Neither fit identifies physical contacts or cell-cell signaling from density measurements alone.
+
+## 6. Use processed serial-section data
+
+```{r real-input, eval=FALSE}
+# dat contains registered X,Y,Z, section, zone and cell-type KDE columns.
+coords <- as.matrix(dat[, c("X", "Y", "Z")])
+kde <- as.matrix(dat[, c("kde_Tumor", "kde_T_cell", "kde_Macrophage")])
+colnames(kde) <- c("Tumor", "T_cell", "Macrophage")
+Y <- log1p(1e9 * kde)
+selected <- ispat3d_sample(coords, dat$zone, dat$section,
+                           budget = 1000L, budget_kind = "per_zone")
+rows <- unlist(selected, use.names = FALSE)
+args <- list(Y = Y[rows, , drop = FALSE],
+             coords = coords[rows, , drop = FALSE],
+             zones = dat$zone[rows], sections = dat$section[rows],
+             rank = 2L)
+planar <- do.call(ispat3d_fit_2d, args)
+volumetric <- do.call(ispat3d_fit, args)
+ispat3d_plot_zones(planar, threshold = 0.05)
+```
+
+See the [README](https://github.com/sagnikbhadury/ISPAT-3D#readme) for the exact processed CRC and breast input schemas and full sample budgets.
+
+## References
+
+Bhadury, S., Peruzzi, M., Acharyya, S., et al. (2026). "Informed spatially aware patterns for multiplexed immunofluorescence data." *Scientific Reports* **16**, 5015. [doi:10.1038/s41598-026-35341-8](https://doi.org/10.1038/s41598-026-35341-8).
+
+Bhadury, S. and Rao, A. (2026). "Estimating Conditional Cell Population Associations Across Tumor Density Zones in Three Dimensional Tissue Images." Manuscript submitted to *Scientific Reports*. Accompanying software archive: [doi:10.5281/zenodo.22798429](https://doi.org/10.5281/zenodo.22798429). This is the **software DOI**, not a publication DOI for the manuscript.

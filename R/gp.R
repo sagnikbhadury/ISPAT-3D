@@ -1,7 +1,7 @@
 # GPBoost Vecchia spatial adjustment used by the current analysis.
 
 .ispat3d_gp_adjust <- function(y, coords, anchor, seed, neighbors = 15L,
-                               maxit = 30L, threads = 4L) {
+                               maxit = 30L, threads = 2L) {
   n <- length(y)
   if (n < 10L || stats::sd(y) < 1e-9)
     return(list(residual = y - mean(y), status = if (n < 10L) "small_section" else

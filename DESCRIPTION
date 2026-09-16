@@ -1,7 +1,7 @@
 Package: ISPAT3D
 Type: Package
 Title: Spatial Conditional Association Networks in Registered Tumor Volumes
-Version: 0.3.0
+Version: 0.3.1
 Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu",
     role = c("aut", "cre"))
 Description: Fits tumor-zone-specific conditional cell-density networks from
@@ -16,11 +16,17 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     gpboost,
+    graphics,
     stats,
     utils
 Suggests:
     data.table,
+    knitr,
+    rmarkdown,
     testthat (>= 3.0.0)
+VignetteBuilder: knitr
+URL: https://github.com/sagnikbhadury/ISPAT-3D
+BugReports: https://github.com/sagnikbhadury/ISPAT-3D/issues
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 

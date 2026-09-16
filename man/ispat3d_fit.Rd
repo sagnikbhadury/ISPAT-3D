@@ -17,7 +17,7 @@ ispat3d_fit(
   gp_maxit = 30L,
   factor_maxit = 350L,
   seed = 2026L,
-  threads = 4L,
+  threads = 2L,
   return_residuals = FALSE
 )
 }
@@ -53,7 +53,7 @@ List containing shared covariance, full zone covariances, zone
 partial correlations, diagnostics, and optionally residuals.
 }
 \description{
-Fits a Matérn-3/2 anisotropic GP per variable and zone using a 15-neighbor
+Fits a MatÃ©rn-3/2 anisotropic GP per variable and zone using a 15-neighbor
 Vecchia likelihood on spatially balanced anchors; predicts at all selected
 cells; then fits shared-plus-zone covariance from complete residual
 covariance summaries by Gaussian maximum likelihood.

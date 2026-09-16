@@ -36,3 +36,22 @@ test_that("current Vecchia 3D and section-wise 2D entry points run", {
   expect_true(all(vapply(f2$partial, function(z) all(is.finite(z)), logical(1))))
 })
 
+test_that("example image yields matched section zones and plot-ready networks", {
+  image <- ispat3d_example_image(n_per_section = 30L, n_sections = 3L)
+  expect_equal(dim(image$coords), c(90L, 3L))
+  expect_equal(dim(image$kde), c(90L, 3L))
+  expect_true(all(table(image$zones, image$sections) == 15L))
+  expect_true(all(is.finite(image$Y)))
+
+  pcor <- matrix(c(1, 0.3, -0.2, 0.3, 1, 0,
+                   -0.2, 0, 1), 3L, 3L,
+                 dimnames = list(LETTERS[1:3], LETTERS[1:3]))
+  edges <- ispat3d_edge_table(pcor, threshold = 0.1)
+  expect_equal(nrow(edges), 2L)
+  expect_equal(edges$sign, c("positive", "negative"))
+  grDevices::pdf(file = tempfile(fileext = ".pdf"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_invisible(ispat3d_plot_network(pcor, threshold = 0.1))
+  fit <- list(full = list(Low = diag(3L), High = diag(3L)))
+  expect_invisible(ispat3d_plot_zones(fit, threshold = 0.1))
+})

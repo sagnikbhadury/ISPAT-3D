@@ -31,6 +31,9 @@
     stop("invalid anchor selection parameters")
   zone_names <- .ispat3d_zone_names(zones)
   if (length(zone_names) < 2L) stop("at least two zones are required")
+  if (length(threads) != 1L || !is.finite(threads) ||
+      threads < 1L || threads > 2L || threads != as.integer(threads))
+    stop("threads must be 1 or 2")
   if (planar && anyNA(sections)) stop("sections are required for the planar fit")
   set.seed(seed)
   covariances <- residuals <- vector("list", length(zone_names))
@@ -136,7 +139,7 @@ ispat3d_fit <- function(Y, coords, zones, sections = rep(1L, nrow(Y)),
                         rank = 5L, anchor_fraction = 0.10,
                         anchor_min = 300L, anchor_max = 5000L,
                         neighbors = 15L, gp_maxit = 30L,
-                        factor_maxit = 350L, seed = 2026L, threads = 4L,
+                        factor_maxit = 350L, seed = 2026L, threads = 2L,
                         return_residuals = FALSE) {
   .ispat3d_pipeline(Y, coords, zones, sections, rank, anchor_fraction,
     anchor_min, anchor_max, neighbors, gp_maxit, factor_maxit, seed,

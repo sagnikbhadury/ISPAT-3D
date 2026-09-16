@@ -1,0 +1,128 @@
+---
+title: "A volumetric cell-density network from a small registered image"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{A volumetric cell-density network}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This vignette starts with an illustrative three-section cell map, constructs a cell-type-specific kernel-density estimate (KDE) within each section, assigns relative tumor-density zones, and fits the current ISPAT3D volumetric model. All computations use a small synthetic image so that the vignette can be rebuilt during package checks. The real colorectal and breast analyses in Bhadury and Rao (2026) use registered experimental images and substantially larger cell rosters; the example here is a software demonstration, not biological evidence.
+
+The pipeline extends the planar ISPat architecture of Bhadury *et al.* (2026) by using registered $(x,y,z)$ coordinates in an anisotropic spatial GP and fitting shared-plus-zone covariance to the adjusted cell-density variables. The current package estimates that covariance by Gaussian likelihood; it does not run the earlier Bayesian CAVI estimator.
+
+## 1. Simulate a registered cell map and inspect the image
+
+```{r setup, message=FALSE}
+library(ISPAT3D)
+set.seed(2026)
+image <- ispat3d_example_image(n_per_section = 30, n_sections = 3,
+                               bandwidth = 0.12, seed = 2026)
+stopifnot(ncol(image$coords) == 3, nrow(image$Y) == 90)
+table(image$zones, image$sections)
+```
+
+Each row represents one annotated cell. The source phenotype determines which section-wise KDE surface the cell contributes to; every KDE surface is then evaluated at **every** cell position. The simulator returns `kde` and the transformed analysis matrix `Y = log1p(1e9 * kde)`. It also returns the registered coordinate matrix, section identifiers, source cell types, and a tumor-cell KDE score. Within each section, the median tumor score divides cells into Low and High relative tumor-density zones. Two zones and three cell types keep this example fast; the manuscript used five zones and more cell types.
+
+```{r map, fig.width=7, fig.height=2.7, fig.cap="Three registered synthetic sections. Color denotes annotated source cell type."}
+old <- par(mfrow = c(1, 3), mar = c(3, 3, 2, 1))
+palette <- c(Tumor = "#C44E52", T_cell = "#4C72B0",
+             Macrophage = "#55A868")
+for (s in sort(unique(image$sections))) {
+  at <- image$sections == s
+  plot(image$coords[at, 1:2], xlim = c(0, 1), ylim = c(0, 1),
+       xlab = "x", ylab = "y", main = paste("Section", s),
+       pch = 19, cex = 0.6, col = palette[image$cell_type[at]])
+}
+par(old)
+```
+
+A real input table must already contain registered coordinates and phenotypes or cell-type KDE values. ISPAT3D does not register serial sections, classify cells, or calculate KDE surfaces for arbitrary images. Those steps should be completed and checked before calling the network fitter.
+
+## 2. Select a reproducible roster
+
+`ispat3d_sample()` spreads selections over a 10-by-10 in-plane grid and allocates each zone's budget across sections according to available counts. The returned indices refer to rows of the original image and should be saved if another model will use the same cells.
+
+```{r sample}
+selected <- ispat3d_sample(image$coords, image$zones, image$sections,
+                           budget = 36L, budget_kind = "per_zone",
+                           seed = 2027L)
+lengths(selected)
+rows <- unlist(selected, use.names = FALSE)
+stopifnot(length(rows) == 72L)
+```
+
+This 36-per-zone budget is only for the small demonstration. The manuscript's CRC budgets are 50,000, 100,000, and 150,000 **per zone**; breast budgets are 25,000, 45,000, and 65,000 **total across all zones**. For a breast-style budget, set `budget_kind = "total"`. To reproduce an analysis exactly, save `selected` with `saveRDS()` and reuse its indices.
+
+## 3. Fit the volumetric GP and factor covariance
+
+The input `Y` has **cells in rows and cell-type variables in columns**. `coords` has the same row order and three columns $(x,y,z)$. The model fits a separate Matérn-3/2 GP for each variable and zone, using 15 Vecchia neighbors and spatially balanced anchors by default. The GP field is then predicted and subtracted at every selected cell. The adjusted rows produce a complete covariance matrix for each zone. A Gaussian-likelihood fit separates covariance shared across zones from zone-specific covariance and positive diagonal uniqueness.
+
+For this tiny example we use five neighbors, at most 24 anchors, three GP optimizer iterations, and rank two. These settings keep a vignette fast and are **not** the large-image settings reported in the manuscript.
+
+```{r fit3d}
+fit3d <- ispat3d_fit(
+  Y = image$Y[rows, , drop = FALSE],
+  coords = image$coords[rows, , drop = FALSE],
+  zones = image$zones[rows],
+  sections = image$sections[rows],
+  rank = 2L,
+  anchor_min = 12L, anchor_max = 24L,
+  neighbors = 5L, gp_maxit = 3L, factor_maxit = 60L,
+  threads = 1L, return_residuals = TRUE
+)
+fit3d$counts
+table(fit3d$gp_log$status)
+```
+
+Inspect `fit3d$gp_log` for each variable's GP status, anchor count, fit time, and prediction time. `fit3d$covariances` contains sample covariances computed from **all** selected adjusted rows. `fit3d$residuals` is present because we requested it; omit `return_residuals = TRUE` if cell-level residuals are not needed.
+
+## 4. Obtain and display zone networks
+
+The fitted decomposition is `Sigma_q = Phi Phi' + Lambda_q Lambda_q' + Psi_q`. A network is made from the inverse of the **full** fitted `Sigma_q`, not from the low-rank shared matrix alone. `ispat3d_partial_correlation()` performs that conversion, and `fit3d$partial` already contains the result for every zone.
+
+```{r inspect-network}
+names(fit3d$full)
+round(fit3d$shared, 3)
+round(fit3d$partial[["High"]], 3)
+recomputed <- ispat3d_partial_correlation(fit3d$full[["High"]])
+stopifnot(isTRUE(all.equal(recomputed, fit3d$partial[["High"]])))
+ispat3d_edge_table(fit3d, zone = "High", threshold = 0.02)
+```
+
+`ispat3d_edge_table()` lists signed pairs and their absolute effects. The threshold here only controls which effects are **shown**; it does not calculate significance or control a false-discovery rate.
+
+```{r networks, fig.width=7, fig.height=3.5, fig.cap="Conditional cell-density association networks in two relative tumor-density zones."}
+ispat3d_plot_zones(fit3d, threshold = 0.02, columns = 2,
+                   label_cex = 0.8)
+```
+
+Red and blue lines represent positive and negative partial correlations. Edge width follows absolute magnitude. To draw one network, use `ispat3d_plot_network(fit3d, zone = "High", threshold = 0.02)`. Both plotting functions use base R graphics; no graph package is required.
+
+A partial-correlation edge summarizes association between adjusted cell-type KDE variables conditional on the other measured variables. It does **not** establish direct cell contact, signaling, immune inhibition, or causation. Broad smooth biology can be removed by the GP along with technical background; results need scale sensitivity and independent biological validation.
+
+## 5. Apply the same path to a processed image
+
+For a processed table, assemble a numeric KDE matrix, registered coordinates, relative tumor-burden zones, and section IDs in matching row order. For example:
+
+```{r real-input, eval=FALSE}
+# dat has X, Y, Z, section, zone, kde_Tumor, kde_T_cell, kde_Macrophage.
+coords <- as.matrix(dat[, c("X", "Y", "Z")])
+kde <- as.matrix(dat[, c("kde_Tumor", "kde_T_cell", "kde_Macrophage")])
+colnames(kde) <- c("Tumor", "T_cell", "Macrophage")
+Y <- log1p(1e9 * kde)
+selected <- ispat3d_sample(coords, dat$zone, dat$section,
+                           budget = 1000L, budget_kind = "per_zone")
+rows <- unlist(selected, use.names = FALSE)
+fit <- ispat3d_fit(Y[rows, , drop = FALSE], coords[rows, , drop = FALSE],
+                   dat$zone[rows], dat$section[rows], rank = 2L)
+ispat3d_plot_zones(fit, threshold = 0.05)
+```
+
+The [package README](https://github.com/sagnikbhadury/ISPAT-3D#readme) lists the exact processed CRC and breast input columns and the full application budgets.
+
+## References
+
+Bhadury, S., Peruzzi, M., Acharyya, S., et al. (2026). "Informed spatially aware patterns for multiplexed immunofluorescence data." *Scientific Reports* **16**, 5015. [doi:10.1038/s41598-026-35341-8](https://doi.org/10.1038/s41598-026-35341-8).
+
+Bhadury, S. and Rao, A. (2026). "Estimating Conditional Cell Population Associations Across Tumor Density Zones in Three Dimensional Tissue Images." Manuscript submitted to *Scientific Reports*. The software accompanying this manuscript is archived at [doi:10.5281/zenodo.22798429](https://doi.org/10.5281/zenodo.22798429); this is a **software DOI**, not a publication DOI for the manuscript.

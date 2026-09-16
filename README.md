@@ -23,14 +23,64 @@ library(ISPAT3D)
 packageVersion("ISPAT3D")
 ```
 
-Version 0.3.0 introduces the current package API. Download the [versioned R source archive](https://github.com/sagnikbhadury/ISPAT-3D/releases/tag/v0.3.0), archived at [Zenodo DOI 10.5281/zenodo.22798429](https://doi.org/10.5281/zenodo.22798429). `gpboost` is imported automatically when ISPAT3D is installed. The manuscript applications used R 4.5.2 and GPBoost 1.7.4. For the large CSV example below, install `data.table` separately:
+Version 0.3.1 adds executable 2D and 3D vignettes and base-R network plotting to the current package API. Download the [versioned R source archive](https://github.com/sagnikbhadury/ISPAT-3D/releases/tag/v0.3.0), archived at [Zenodo DOI 10.5281/zenodo.22798429](https://doi.org/10.5281/zenodo.22798429). `gpboost` is imported automatically when ISPAT3D is installed. The manuscript applications used R 4.5.2 and GPBoost 1.7.4. For the large CSV example below, install `data.table` separately:
 
 ```r
 install.packages("data.table")
 ```
 
-You can also download the repository source and run `R CMD build .` followed by `R CMD check --no-manual ISPAT3D_0.3.0.tar.gz`. An R source install does not require Python.
+You can also download the repository source and run `R CMD build .` followed by `R CMD check --as-cran ISPAT3D_0.3.1.tar.gz`. An R source install does not require Python.
 
+## Run a complete small image example
+
+The package includes a synthetic, registered three-section cell map for learning and package checks. It builds section-wise cell-type KDE values, assigns Low and High zones by the within-section tumor-cell KDE median, and returns the log-transformed density matrix. This is a software example, not a substitute for processing real images.
+
+```r
+library(ISPAT3D)
+image <- ispat3d_example_image(n_per_section = 30L, n_sections = 3L)
+table(image$zones, image$sections)
+selected <- ispat3d_sample(image$coords, image$zones, image$sections,
+                           budget = 36L, budget_kind = "per_zone",
+                           seed = 2027L)
+rows <- unlist(selected, use.names = FALSE)
+args <- list(Y = image$Y[rows, , drop = FALSE],
+             coords = image$coords[rows, , drop = FALSE],
+             zones = image$zones[rows], sections = image$sections[rows],
+             rank = 2L, anchor_min = 12L, anchor_max = 24L,
+             neighbors = 5L, gp_maxit = 3L, factor_maxit = 60L,
+             threads = 1L)
+fit3d <- do.call(ispat3d_fit, args)
+fit2d <- do.call(ispat3d_fit_2d, args)
+table(fit3d$gp_log$status)
+table(fit2d$gp_log$status)
+```
+
+The two fits use the **same cells**. In 3D, the GP uses registered x, y, and z coordinates and pools cells within each zone. In matched 2D, the GP uses x and y and is fitted separately in each zone-section group. Both use the same covariance likelihood after GP adjustment. The small settings above make the example practical to run; the application defaults and manuscript budgets are described below.
+
+### Turn fitted covariance into zone networks
+
+Each fitted full covariance is the sum of a shared factor component, a zone-specific factor component, and diagonal uniqueness. Convert the **full** covariance to partial correlation; a shared low-rank component alone is not a valid inverse-covariance network.
+
+```r
+zone <- "High"
+pcor <- ispat3d_partial_correlation(fit3d$full[[zone]])
+stopifnot(isTRUE(all.equal(pcor, fit3d$partial[[zone]])))
+edges <- ispat3d_edge_table(fit3d, zone = zone, threshold = 0.02)
+print(edges)
+ispat3d_plot_network(fit3d, zone = zone, threshold = 0.02)
+ispat3d_plot_zones(fit3d, threshold = 0.02, columns = 2L)
+ispat3d_plot_zones(fit2d, threshold = 0.02, columns = 2L)
+```
+
+Red and blue lines represent positive and negative conditional associations. Line width shows absolute partial correlation. A display threshold hides small edges **only in the table and plots**; it is not a significance threshold. To save a panel, open a graphics device first:
+
+```r
+pdf("zone_networks_3d.pdf", width = 8, height = 4)
+ispat3d_plot_zones(fit3d, threshold = 0.05, columns = 2L)
+dev.off()
+```
+
+The executable package vignettes go from image-like cell data to networks in more detail: `vignette("volumetric-network", package = "ISPAT3D")` and `vignette("matched-planar-network", package = "ISPAT3D")`. Both cite the published [ISPat paper](https://doi.org/10.1038/s41598-026-35341-8) and the submitted ISPAT-3D manuscript; the [Zenodo DOI](https://doi.org/10.5281/zenodo.22798429) identifies the associated software release.
 ## Prepare the inputs
 
 Every selected cell is one **row** in all inputs, in exactly the same order:
@@ -160,7 +210,7 @@ The example runs all three dataset-specific sampling budgets, saves `selected_id
 
 ## Reproduce the submitted figures
 
-The `inst/reanalysis/round2` directory retains the analysis and figure scripts used for the submitted results, including saved simulation reruns, the focused GP experiment, section-block sign stability, matched 2D fitting, and graphical-lasso sensitivity. Its `README.md` lists the CLI inputs and analysis order. Those archived runs used a Python implementation of the same Gaussian covariance objective; the R package uses an analytic-gradient R implementation. Optimization and floating-point differences mean a fresh package fit may not reproduce every saved coefficient bit-for-bit. The original registered image data, processed KDE tables, fitted outputs, and manuscript are not redistributed in this code repository.
+The GitHub `inst/reanalysis/round2` directory retains the analysis and figure scripts used for the submitted results, including saved simulation reruns, the focused GP experiment, section-block sign stability, matched 2D fitting, and graphical-lasso sensitivity. Its `README.md` lists the CLI inputs and analysis order. Those archived runs used a Python implementation of the same Gaussian covariance objective; the R package uses an analytic-gradient R implementation. Optimization and floating-point differences mean a fresh package fit may not reproduce every saved coefficient bit-for-bit. Those archival scripts are excluded from the CRAN source tarball. The original registered image data, processed KDE tables, fitted outputs, and manuscript are not redistributed in this code repository.
 
 ## Interpretation and troubleshooting
 
@@ -172,4 +222,3 @@ The `inst/reanalysis/round2` directory retains the analysis and figure scripts u
 - **Interpretation:** A smoother GP can remove real broad-scale biology as well as nuisance variation. Compare scales or use independent biological evidence before treating a conditional edge as a mechanism.
 
 For package function signatures, use `?ispat3d_fit`, `?ispat3d_fit_2d`, `?ispat3d_sample`, and `?ispat3d_fit_covariance` in R.
-

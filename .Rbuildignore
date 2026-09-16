@@ -1,2 +1,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^CITATION[.]cff$
+^inst/reanalysis$
+^LICENSE[.]md$
