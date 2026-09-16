@@ -32,7 +32,7 @@ gp2d <- function(y,coords,anchor,seed) {
  runfit <- function(params) gpboost::fitGPModel(
   gp_coords=coords[anchor,,drop=FALSE],cov_function='matern_ard',cov_fct_shape=1.5,
   gp_approx='vecchia',num_neighbors=min(15L,length(anchor)-1L),
-  num_neighbors_pred=min(15L,length(anchor)-1L),
+  
   num_parallel_threads=2L,seed=as.integer(seed),y=ya,
   X=matrix(1,length(ya),1),params=params)
  tf <- system.time({

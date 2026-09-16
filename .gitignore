@@ -1,0 +1,6 @@
+*.Rcheck/
+*.tar.gz
+__pycache__/
+*.pyc
+.Rproj.user/
+

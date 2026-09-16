@@ -1,37 +1,26 @@
 Package: ISPAT3D
 Type: Package
-Title: Spatial Network Estimation in 3D Multiplexed Cancer Imaging
-Version: 0.2.1
-Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu", role = c("aut", "cre"))
-Description: Estimates conditional cell-density associations in registered
-    volumetric multiplex imaging. The legacy API retains exact type-II
-    Gaussian-process fitting and variational multi-study factor analysis
-    for smaller inputs. The documented revision scripts use a scalable
-    Vecchia Gaussian-process approximation and fit the same shared-plus-zone
-    factor covariance form from full adjusted covariance summaries.
+Title: Spatial Conditional Association Networks in Registered Tumor Volumes
+Version: 0.3.0
+Authors@R: person("Sagnik", "Bhadury", email = "bhadury@umich.edu",
+    role = c("aut", "cre"))
+Description: Fits tumor-zone-specific conditional cell-density networks from
+    registered three-dimensional multiplex imaging. An anisotropic
+    Matern-3/2 Gaussian process is estimated per variable and zone using a
+    Vecchia likelihood on spatially balanced anchors; predictions at all
+    selected cells yield residual covariance sufficient statistics.
+    Gaussian maximum likelihood then fits a shared-plus-zone factor
+    covariance model. A matched section-wise planar fit uses the same
+    selected cells and covariance estimator.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Imports:
-    doParallel,
-    foreach,
-    Matrix,
-    matrixcalc,
-    parallel,
-    sparsepca,
-    mnormt,
-    MASS,
-    stats,
-    grDevices
-Suggests:
-    bigmemory,
-    dplyr,
-    igraph,
-    tidygraph,
-    ggraph,
-    ggplot2,
-    scales,
-    data.table,
     gpboost,
-    jsonlite
-RoxygenNote: 7.3.1
+    stats,
+    utils
+Suggests:
+    data.table,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
+
