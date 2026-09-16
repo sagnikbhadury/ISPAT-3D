@@ -23,7 +23,7 @@ library(ISPAT3D)
 packageVersion("ISPAT3D")
 ```
 
-Version 0.3.0 introduces the current package API. `gpboost` is imported automatically when ISPAT3D is installed. The manuscript applications used R 4.5.2 and GPBoost 1.7.4. For the large CSV example below, install `data.table` separately:
+Version 0.3.0 introduces the current package API. Download the [versioned R source archive](https://github.com/sagnikbhadury/ISPAT-3D/releases/tag/v0.3.0), archived at [Zenodo DOI 10.5281/zenodo.22798429](https://doi.org/10.5281/zenodo.22798429). `gpboost` is imported automatically when ISPAT3D is installed. The manuscript applications used R 4.5.2 and GPBoost 1.7.4. For the large CSV example below, install `data.table` separately:
 
 ```r
 install.packages("data.table")
