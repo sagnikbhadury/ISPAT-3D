@@ -11,7 +11,9 @@ Description: Fits tumor-zone-specific conditional cell-density networks from
     selected cells yield residual covariance sufficient statistics.
     Gaussian maximum likelihood then fits a shared-plus-zone factor
     covariance model. A matched section-wise planar fit uses the same
-    selected cells and covariance estimator.
+    selected cells and covariance estimator. This extends the spatially
+    informed cell-density analysis of Bhadury et al. (2026)
+    <doi:10.1038/s41598-026-35341-8>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
